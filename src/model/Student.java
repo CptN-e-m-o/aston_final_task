@@ -54,8 +54,6 @@ public final class Student {
                 '}';
     }
 
-
-
     public static class Builder {
         private String groupNumber;
         private double averageGrade;
