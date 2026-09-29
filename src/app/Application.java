@@ -7,10 +7,12 @@ import datasource.RandomStudentSource;
 import model.Student;
 import occurrence.OccurrenceCounterService;
 import occurrence.SimpleOccurrenceCounterService;
+import output.ResultFileWriter;
 import strategy.EvenOnlySortDecorator;
 import strategy.SortStrategy;
 import strategy.SortStrategyRegistry;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,8 +32,9 @@ import java.util.Scanner;
  * InputReader и здесь, в run(), — на верхнем уровне, чтобы неожиданная
  * ошибка не могла уронить всю программу.
  *
- * Запись результатов в файл (доп. задание №2) сюда намеренно не включена —
- * будет добавлена отдельно.
+ * Доп. задание №2: результат последней сортировки или подсчёта вхождений
+ * можно дописать в файл (см. output.ResultFileWriter) — старое содержимое
+ * файла не стирается.
  */
 public class Application {
 
@@ -40,13 +43,20 @@ public class Application {
     private final InputReader inputReader;
     private final SortStrategyRegistry sortStrategyRegistry;
     private final OccurrenceCounterService<Student> occurrenceCounterService;
+    private final ResultFileWriter resultFileWriter;
 
     private List<Student> originalStudents = new ArrayList<>();
+
+    // Последний результат (сортировки или подсчёта вхождений), доступный
+    // для записи в файл через пункт меню "Записать результат в файл".
+    private String lastResultTitle;
+    private List<String> lastResultLines;
 
     public Application(Scanner scanner) {
         this.inputReader = new InputReader(scanner);
         this.sortStrategyRegistry = new SortStrategyRegistry();
         this.occurrenceCounterService = new SimpleOccurrenceCounterService<>();
+        this.resultFileWriter = new ResultFileWriter();
     }
 
     /**
@@ -58,7 +68,7 @@ public class Application {
         boolean running = true;
         while (running) {
             printMainMenu();
-            int choice = inputReader.readMenuChoice(5);
+            int choice = inputReader.readMenuChoice(6);
 
             try {
                 switch (choice) {
@@ -75,6 +85,9 @@ public class Application {
                         countOccurrences();
                         break;
                     case 5:
+                        writeLastResultToFile();
+                        break;
+                    case 6:
                         running = false;
                         break;
                     default:
@@ -96,7 +109,8 @@ public class Application {
         System.out.println("2. Показать исходную коллекцию");
         System.out.println("3. Отсортировать коллекцию");
         System.out.println("4. Подсчитать количество вхождений студента");
-        System.out.println("5. Выход");
+        System.out.println("5. Записать результат в файл");
+        System.out.println("6. Выход");
     }
 
     private void createCollection() {
@@ -152,6 +166,10 @@ public class Application {
         strategy.sort(workingCopy, field.getComparator());
 
         printStudents(workingCopy, "Результат сортировки");
+
+        lastResultTitle = "Отсортированная коллекция (поле: " + field.getTitle()
+                + ", режим: " + (evenOnly ? "дополнительный (по чётности)" : "обычный") + ")";
+        lastResultLines = toLines(workingCopy);
     }
 
     private SortField chooseSortField() {
@@ -218,6 +236,38 @@ public class Application {
 
         int occurrences = occurrenceCounterService.count(originalStudents, target);
         System.out.println("Найдено вхождений: " + occurrences);
+
+        lastResultTitle = "Подсчёт вхождений";
+        lastResultLines = List.of(
+                "Искомый студент: " + target,
+                "Найдено вхождений: " + occurrences
+        );
+    }
+
+    private void writeLastResultToFile() {
+        if (lastResultLines == null) {
+            System.out.println("Нет результата для записи. Сначала выполните сортировку (пункт 3) "
+                    + "или подсчёт вхождений (пункт 4).");
+            return;
+        }
+
+        String path = inputReader.readNonEmptyString(
+                "Путь к файлу (данные будут добавлены в конец файла, не стирая старые): ");
+
+        try {
+            resultFileWriter.append(Path.of(path), lastResultTitle, lastResultLines);
+            System.out.println("Результат добавлен в файл: " + path);
+        } catch (IOException e) {
+            System.out.println("Не удалось записать в файл: " + e.getMessage());
+        }
+    }
+
+    private List<String> toLines(List<Student> students) {
+        List<String> lines = new ArrayList<>();
+        for (Student student : students) {
+            lines.add(student.toString());
+        }
+        return lines;
     }
 
     private void printStudents(List<Student> students, String title) {
