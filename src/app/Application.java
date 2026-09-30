@@ -8,9 +8,9 @@ import model.Student;
 import occurrence.OccurrenceCounterService;
 import occurrence.SimpleOccurrenceCounterService;
 import output.ResultFileWriter;
-import strategy.EvenOnlySortDecorator;
 import strategy.SortStrategy;
 import strategy.SortStrategyRegistry;
+import strategy.EvenOnlySortStrategy;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -159,7 +159,10 @@ public class Application {
         boolean evenOnly = chooseSortMode(field);
 
         if (evenOnly) {
-            strategy = new EvenOnlySortDecorator<>(strategy, Student::getRecordBookNumber);
+            strategy = new EvenOnlySortStrategy<>(
+                    strategy,
+                    Student::getRecordBookNumber
+            );
         }
 
         List<Student> workingCopy = new ArrayList<>(originalStudents);
