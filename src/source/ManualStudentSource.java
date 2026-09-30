@@ -4,6 +4,7 @@ import collection.CustomArrayList;
 import model.Student;
 
 import java.util.Scanner;
+import java.util.stream.IntStream;
 
 public class ManualStudentSource implements DataSource<Student> {
     private final Scanner scanner;
@@ -13,38 +14,17 @@ public class ManualStudentSource implements DataSource<Student> {
     }
 
     @Override
-    public CustomArrayList<Student> getData(int count) {
+    public CustomArrayList<Student> load(int count) {
         CustomArrayList<Student> students = new CustomArrayList<>();
+
         System.out.println("--- Ручной ввод (" + count + " студентов) ---");
 
-        for (int i = 0; i < count; i++) {
-            System.out.println("Студент #" + (i + 1));
-            boolean valid = false;
-            while (!valid) {
-                try {
-                    System.out.print("Введите номер группы: ");
-                    String group = scanner.nextLine();
-                    if (group.trim().isEmpty()) throw new IllegalArgumentException("Группа не может быть пустой!");
+        IntStream.rangeClosed(1, count)
+                .forEach(i -> {
+                    System.out.println("Студент #" + i);
+                    students.add(readOneStudent());
+                });
 
-                    System.out.print("Введите средний балл (1.0 - 5.0): ");
-                    double grade = readDoubleSafely(scanner);
-
-                    System.out.print("Введите номер зачетной книжки (> 0): ");
-                    int recordBook = readIntSafely(scanner);
-
-                    Student student = new Student.Builder()
-                            .groupNumber(group)
-                            .averageGrade(grade)
-                            .recordBookNumber(recordBook)
-                            .build();
-
-                    students.add(student);
-                    valid = true;
-  } catch (IllegalArgumentException e) {
-                    System.out.println("Ошибка: " + e.getMessage() + ". Попробуйте снова.");
-                }
-            }
-        }
         return students;
     }
 
@@ -68,6 +48,38 @@ public class ManualStudentSource implements DataSource<Student> {
                 return Double.parseDouble(input);
             } catch (NumberFormatException e) {
                 System.out.print("Неверный формат! Введите число (например, 4.5): ");
+            }
+        }
+    }
+
+    private Student readOneStudent() {
+        while (true) {
+            try {
+                System.out.print("Введите номер группы: ");
+                String group = scanner.nextLine();
+
+                if (group.trim().isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Группа не может быть пустой!"
+                    );
+                }
+
+                System.out.print("Введите средний балл (1.0 - 5.0): ");
+                double grade = readDoubleSafely(scanner);
+
+                System.out.print("Введите номер зачетной книжки (> 0): ");
+                int recordBook = readIntSafely(scanner);
+
+                return new Student.Builder()
+                        .groupNumber(group)
+                        .averageGrade(grade)
+                        .recordBookNumber(recordBook)
+                        .build();
+
+            } catch (IllegalArgumentException e) {
+                System.out.println(
+                        "Ошибка: " + e.getMessage() + ". Попробуйте снова."
+                );
             }
         }
     }
