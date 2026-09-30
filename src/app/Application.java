@@ -1,16 +1,17 @@
 package app;
 
-import datasource.DataSource;
-import datasource.FileStudentSource;
-import datasource.ManualStudentSource;
-import datasource.RandomStudentSource;
+import collection.CustomArrayList;
+import source.DataSource;
+import source.FileStudentSource;
+import source.ManualStudentSource;
+import source.RandomStudentSource;
 import model.Student;
 import occurrence.OccurrenceCounterService;
 import occurrence.SimpleOccurrenceCounterService;
 import output.ResultFileWriter;
-import strategy.EvenOnlySortDecorator;
 import strategy.SortStrategy;
 import strategy.SortStrategyRegistry;
+import strategy.EvenOnlySortStrategy;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -45,14 +46,17 @@ public class Application {
     private final OccurrenceCounterService<Student> occurrenceCounterService;
     private final ResultFileWriter resultFileWriter;
 
-    private List<Student> originalStudents = new ArrayList<>();
+    private CustomArrayList<Student> originalStudents = new CustomArrayList<>();
 
     // Последний результат (сортировки или подсчёта вхождений), доступный
     // для записи в файл через пункт меню "Записать результат в файл".
     private String lastResultTitle;
     private List<String> lastResultLines;
 
+    private final Scanner scanner;
+
     public Application(Scanner scanner) {
+        this.scanner = scanner;
         this.inputReader = new InputReader(scanner);
         this.sortStrategyRegistry = new SortStrategyRegistry();
         this.occurrenceCounterService = new SimpleOccurrenceCounterService<>();
@@ -125,20 +129,19 @@ public class Application {
 
         DataSource<Student> dataSource = resolveDataSource(sourceChoice);
 
-        List<Student> loaded = dataSource.load(count);
-        originalStudents = new ArrayList<>(loaded);
+        originalStudents = dataSource.load(count);
         System.out.println("Коллекция создана. Студентов: " + originalStudents.size());
     }
 
     private DataSource<Student> resolveDataSource(int sourceChoice) {
         switch (sourceChoice) {
             case 1:
-                return new ManualStudentSource(inputReader);
+                return new ManualStudentSource(scanner);
             case 2:
                 return new RandomStudentSource();
             case 3:
                 String path = inputReader.readNonEmptyString("Путь к файлу: ");
-                return new FileStudentSource(Path.of(path));
+                return new FileStudentSource(path);
             default:
                 throw new IllegalStateException("Неизвестный способ заполнения");
         }
@@ -159,10 +162,14 @@ public class Application {
         boolean evenOnly = chooseSortMode(field);
 
         if (evenOnly) {
-            strategy = new EvenOnlySortDecorator<>(strategy, Student::getRecordBookNumber);
+            strategy = new EvenOnlySortStrategy<>(
+                    strategy,
+                    Student::getRecordBookNumber
+            );
         }
 
-        List<Student> workingCopy = new ArrayList<>(originalStudents);
+        CustomArrayList<Student> workingCopy = new CustomArrayList<>();
+        workingCopy.addAll(originalStudents);
         strategy.sort(workingCopy, field.getComparator());
 
         printStudents(workingCopy, "Результат сортировки");

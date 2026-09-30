@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class FileStudentSource implements DataSource<Student> {
     private final String filePath;
@@ -17,19 +16,17 @@ public class FileStudentSource implements DataSource<Student> {
     }
 
     @Override
-    public CustomArrayList<Student> getData(int count) {
+    public CustomArrayList<Student> load(int count) {
         CustomArrayList<Student> students = new CustomArrayList<>();
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath));
 
-            List<Student> parsedStudents = lines.stream()
+            lines.stream()
                     .filter(line -> !line.trim().isEmpty())
                     .map(this::parseLine)
                     .filter(student -> student != null)
                     .limit(count)
-                    .collect(Collectors.toList());
-
-            parsedStudents.forEach(students::add);
+                    .forEach(students::add);
 
         } catch (IOException e) {
             System.err.println("Ошибка чтения файла: " + e.getMessage());
@@ -65,6 +62,7 @@ public class FileStudentSource implements DataSource<Student> {
             return null;
         } catch (IllegalArgumentException e) {
             System.err.println("Ошибка валидации данных: " + e.getMessage() + " в строке: " + line);
-            return null;   }
+            return null;
         }
     }
+}
